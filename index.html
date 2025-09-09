@@ -36,14 +36,24 @@
             font-size: 2rem;
             line-height: 1;
         }
+        /* New, robust placeholder style */
+        [data-placeholder]:empty::before {
+            content: attr(data-placeholder);
+            color: #6b7280; /* gray-500 */
+            pointer-events: none; /* Prevents the placeholder from blocking clicks */
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white p-4 lg:p-6">
 
     <div class="max-w-7xl mx-auto">
         <!-- Header Section -->
-        <header class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-700">
-            <h1 class="text-2xl lg:text-3xl font-bold text-red-500 tracking-wider">Fireground Accountability</h1>
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-gray-700">
+            <div>
+                <h1 class="text-2xl lg:text-3xl font-bold text-red-500 tracking-wider">Fireground Accountability</h1>
+                <!-- The placeholder text is now handled by CSS, the element itself is empty -->
+                <div id="incident-address" contenteditable="true" data-placeholder="Enter Address..." class="text-lg mt-1 px-2 rounded-md -ml-2 focus:ring-2 focus:ring-blue-500"></div>
+            </div>
             <div class="flex items-center space-x-4 mt-4 sm:mt-0">
                 <div class="text-right">
                     <div class="text-sm text-gray-400">Incident Commander</div>
@@ -53,8 +63,21 @@
                     <div class="text-xs text-gray-400">Incident Timer</div>
                     <div id="incident-timer" class="text-2xl font-mono font-bold">00:00:00</div>
                 </div>
+                 <button id="export-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors">Export Incident Data</button>
             </div>
         </header>
+
+        <!-- Benchmarks Section -->
+        <div id="benchmarks" class="bg-gray-800 rounded-lg p-3 mb-4 flex flex-col sm:flex-row justify-around items-center gap-4">
+            <div class="text-center">
+                <button id="working-fire-btn" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Log "Working Fire"</button>
+                <p id="working-fire-time" class="text-sm text-gray-400 mt-1">Not Logged</p>
+            </div>
+            <div class="text-center">
+                <button id="under-control-btn" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Log "Under Control"</button>
+                <p id="under-control-time" class="text-sm text-gray-400 mt-1">Not Logged</p>
+            </div>
+        </div>
 
         <!-- Main Board -->
         <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -66,24 +89,6 @@
                     <h2 class="section-header text-green-400 p-2 text-center">Staging / Available</h2>
                     <div id="staging-area" class="drop-zone flex-grow bg-gray-900/50 rounded-md p-2 min-h-[200px] border-2 border-dashed border-gray-600 transition-colors duration-300 space-y-2">
                         <!-- Unit Tags will be dynamically added or dragged here -->
-                        <div class="unit-tag" id="unit-1" draggable="true">
-                            <div class="unit-header bg-blue-600">Engine 1</div>
-                            <ul class="personnel-list">
-                                <li contenteditable="true">Capt. Miller</li>
-                                <li contenteditable="true">FF. Jones</li>
-                                <li contenteditable="true">FF. Singh</li>
-                            </ul>
-                            <div class="unit-timer">PAR: 00:00</div>
-                        </div>
-                        <div class="unit-tag" id="unit-2" draggable="true">
-                            <div class="unit-header bg-red-600">Ladder 2</div>
-                            <ul class="personnel-list">
-                                <li contenteditable="true">Capt. Smith</li>
-                                <li contenteditable="true">FF. Garcia</li>
-                                <li contenteditable="true">FF. Chen</li>
-                            </ul>
-                            <div class="unit-timer">PAR: 00:00</div>
-                        </div>
                     </div>
                     <button id="add-unit-btn" class="mt-3 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors">Add New Unit</button>
                 </div>
@@ -170,10 +175,33 @@
             cursor: grabbing;
         }
         .unit-header {
+            position: relative;
             padding: 0.5rem 0.75rem;
             font-weight: 600;
             color: white;
             text-align: center;
+        }
+        .unit-header .unit-abbr {
+            font-size: 0.75rem;
+            font-weight: 500;
+            opacity: 0.8;
+            margin-left: 0.25rem;
+        }
+        .remove-unit-btn {
+            position: absolute;
+            top: 2px;
+            right: 5px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            line-height: 1;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .remove-unit-btn:hover {
+            opacity: 1;
         }
         .personnel-list {
             list-style: none;
@@ -220,8 +248,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Timers
             const incidentTimerEl = document.getElementById('incident-timer');
+            const incidentAddressEl = document.getElementById('incident-address');
+
             let incidentStartTime = Date.now();
             let unitTimers = {}; // { unitId: startTime }
+            let workingFireTimestamp = null;
+            let underControlTimestamp = null;
+
+            // No more JS needed for the placeholder! It's handled by CSS.
 
             function updateTimers() {
                 // Update main incident timer
@@ -286,6 +320,8 @@
             
             // --- TOUCH EVENTS ---
             function handleTouchStart(e) {
+                // Ignore touch if it's on the remove button
+                if (e.target.classList.contains('remove-unit-btn')) return;
                 if (e.touches.length > 1) return;
                 draggedItem = this;
                 this.classList.add('dragging');
@@ -368,7 +404,7 @@
             const modalContentArea = document.getElementById('modal-content-area');
             const backToDepartmentsBtn = document.getElementById('back-to-departments-btn');
 
-            function createNewUnit(unitType) {
+            function createNewUnit(unitType, deptAbbr) {
                 const newUnit = document.createElement('div');
                 newUnit.className = 'unit-tag';
                 newUnit.id = `unit-${Date.now()}`;
@@ -378,7 +414,10 @@
                 const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
                 newUnit.innerHTML = `
-                    <div class="unit-header ${randomColor}" contenteditable="true">${unitType}</div>
+                    <div class="unit-header ${randomColor}">
+                        ${unitType}<span class="unit-abbr">(${deptAbbr})</span>
+                        <button class="remove-unit-btn" title="Remove Unit">&times;</button>
+                    </div>
                     <ul class="personnel-list">
                         <li contenteditable="true">Personnel 1</li>
                         <li contenteditable="true">Personnel 2</li>
@@ -386,12 +425,22 @@
                     </ul>
                     <div class="unit-timer">PAR: 00:00</div>
                 `;
-                addListenersToUnit(newUnit); // Add listeners to the new element
+                
+                const removeBtn = newUnit.querySelector('.remove-unit-btn');
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevents drag from starting on click
+                    const unitId = newUnit.id;
+                    delete unitTimers[unitId];
+                    newUnit.remove();
+                });
+
+                addListenersToUnit(newUnit);
                 stagingArea.appendChild(newUnit);
             }
 
             function showUnitsForDepartment(deptName) {
                 const department = departmentUnits[deptName];
+                const deptAbbr = department.abbreviation;
                 modalTitle.textContent = `Select Unit from ${deptName}`;
                 modalContentArea.innerHTML = '';
                 modalContentArea.className = 'grid grid-cols-2 sm:grid-cols-3 gap-3';
@@ -401,7 +450,7 @@
                     button.textContent = unitName;
                     button.className = `w-full ${department.color} ${department.hover} text-white font-bold py-2 px-3 rounded transition-colors text-sm`;
                     button.addEventListener('click', () => {
-                        createNewUnit(unitName);
+                        createNewUnit(unitName, deptAbbr);
                         unitModal.classList.add('hidden');
                     });
                     modalContentArea.appendChild(button);
@@ -413,7 +462,7 @@
                 customButton.addEventListener('click', () => {
                     const customUnitName = prompt('Enter custom unit name:');
                     if (customUnitName && customUnitName.trim() !== '') {
-                        createNewUnit(customUnitName.trim());
+                        createNewUnit(customUnitName.trim(), deptAbbr);
                         unitModal.classList.add('hidden');
                     }
                 });
@@ -456,9 +505,105 @@
                 }
             });
 
+            // --- Benchmark Logic ---
+            const workingFireBtn = document.getElementById('working-fire-btn');
+            const workingFireTimeEl = document.getElementById('working-fire-time');
+            const underControlBtn = document.getElementById('under-control-btn');
+            const underControlTimeEl = document.getElementById('under-control-time');
+
+            workingFireBtn.addEventListener('click', () => {
+                if (!workingFireTimestamp) {
+                    workingFireTimestamp = incidentTimerEl.textContent;
+                    workingFireTimeEl.textContent = `Logged at: ${workingFireTimestamp}`;
+                    workingFireTimeEl.classList.remove('text-gray-400');
+                    workingFireTimeEl.classList.add('text-green-400');
+                    workingFireBtn.disabled = true;
+                }
+            });
+
+            underControlBtn.addEventListener('click', () => {
+                if (!underControlTimestamp) {
+                    underControlTimestamp = incidentTimerEl.textContent;
+                    underControlTimeEl.textContent = `Logged at: ${underControlTimestamp}`;
+                    underControlTimeEl.classList.remove('text-gray-400');
+                    underControlTimeEl.classList.add('text-green-400');
+                    underControlBtn.disabled = true;
+                }
+            });
+
+            // --- Export Logic ---
+            const exportBtn = document.getElementById('export-btn');
+
+            function exportData() {
+                let exportContent = 'Fireground Accountability Report\n';
+                exportContent += `====================================\n`;
+                exportContent += `Exported on: ${new Date().toLocaleString()}\n\n`;
+                
+                let address = document.getElementById('incident-address').textContent.trim();
+                if (address === '') {
+                    address = 'Not Entered';
+                }
+                const ic = document.getElementById('incident-commander').textContent;
+                const time = document.getElementById('incident-timer').textContent;
+                
+                exportContent += `Incident Address: ${address}\n`;
+                exportContent += `Incident Commander: ${ic}\n`;
+                exportContent += `Total Incident Time: ${time}\n\n`;
+
+                exportContent += `--- KEY BENCHMARKS ---\n`;
+                exportContent += `Working Fire Declared: ${workingFireTimestamp ? workingFireTimestamp : 'Not Logged'}\n`;
+                exportContent += `Fire Under Control: ${underControlTimestamp ? underControlTimestamp : 'Not Logged'}\n\n`;
+
+                document.querySelectorAll('.drop-zone').forEach(zone => {
+                    let zoneTitle = '';
+                    // Find the title for the zone
+                    if (zone.previousElementSibling && zone.previousElementSibling.classList.contains('section-header')) {
+                        zoneTitle = zone.previousElementSibling.textContent;
+                    } else if (zone.parentElement.classList.contains('assignment-group')) {
+                        zoneTitle = zone.parentElement.querySelector('h3').textContent;
+                    }
+                    
+                    exportContent += `--- ${zoneTitle.toUpperCase()} ---\n`;
+                    
+                    const unitsInZone = zone.querySelectorAll('.unit-tag');
+                    if (unitsInZone.length === 0) {
+                        exportContent += '(No units assigned)\n\n';
+                    } else {
+                        unitsInZone.forEach(unit => {
+                            const unitHeader = unit.querySelector('.unit-header');
+                            // Clone node to remove the button for clean text extraction
+                            const headerClone = unitHeader.cloneNode(true);
+                            headerClone.querySelector('.remove-unit-btn').remove();
+                            const unitName = headerClone.textContent.trim();
+
+                            exportContent += `  - Unit: ${unitName}\n`;
+                            
+                            const personnel = unit.querySelectorAll('.personnel-list li');
+                            personnel.forEach(p => {
+                                exportContent += `    * ${p.textContent}\n`;
+                            });
+                        });
+                        exportContent += '\n';
+                    }
+                });
+                
+                const blob = new Blob([exportContent], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `incident_report_${Date.now()}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            exportBtn.addEventListener('click', exportData);
+
             // Initial setup
             setupEventListeners();
         });
     </script>
 </body>
 </html>
+
