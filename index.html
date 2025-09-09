@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fireground Accountability Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+        }
+        .unit-tag {
+            touch-action: none;
+        }
+        .dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .drag-over {
+            border-color: #3b82f6; /* blue-500 */
+            background-color: #374151; /* gray-700 */
+        }
+        .section-header {
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 700;
+        }
+        [contenteditable]:focus {
+            outline: 2px solid #3b82f6;
+            background-color: #4b5563;
+        }
+        #close-modal-btn {
+            font-size: 2rem;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white p-4 lg:p-6">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header Section -->
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-700">
+            <h1 class="text-2xl lg:text-3xl font-bold text-red-500 tracking-wider">Fireground Accountability</h1>
+            <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+                <div class="text-right">
+                    <div class="text-sm text-gray-400">Incident Commander</div>
+                    <div id="incident-commander" contenteditable="true" class="text-lg font-semibold px-2 rounded-md focus:ring-2 focus:ring-blue-500">J. Doe</div>
+                </div>
+                <div class="bg-gray-800 p-3 rounded-lg text-center shadow-md">
+                    <div class="text-xs text-gray-400">Incident Timer</div>
+                    <div id="incident-timer" class="text-2xl font-mono font-bold">00:00:00</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Board -->
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+            <!-- Column 1: Staging & Rehab -->
+            <div class="flex flex-col gap-4">
+                <!-- Staging Area -->
+                <div class="bg-gray-800 rounded-lg p-3 flex flex-col h-full shadow-lg">
+                    <h2 class="section-header text-green-400 p-2 text-center">Staging / Available</h2>
+                    <div id="staging-area" class="drop-zone flex-grow bg-gray-900/50 rounded-md p-2 min-h-[200px] border-2 border-dashed border-gray-600 transition-colors duration-300 space-y-2">
+                        <!-- Unit Tags will be dynamically added or dragged here -->
+                        <div class="unit-tag" id="unit-1" draggable="true">
+                            <div class="unit-header bg-blue-600">Engine 1</div>
+                            <ul class="personnel-list">
+                                <li contenteditable="true">Capt. Miller</li>
+                                <li contenteditable="true">FF. Jones</li>
+                                <li contenteditable="true">FF. Singh</li>
+                            </ul>
+                            <div class="unit-timer">PAR: 00:00</div>
+                        </div>
+                        <div class="unit-tag" id="unit-2" draggable="true">
+                            <div class="unit-header bg-red-600">Ladder 2</div>
+                            <ul class="personnel-list">
+                                <li contenteditable="true">Capt. Smith</li>
+                                <li contenteditable="true">FF. Garcia</li>
+                                <li contenteditable="true">FF. Chen</li>
+                            </ul>
+                            <div class="unit-timer">PAR: 00:00</div>
+                        </div>
+                    </div>
+                    <button id="add-unit-btn" class="mt-3 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors">Add New Unit</button>
+                </div>
+
+                <!-- Rehab Area -->
+                <div class="bg-gray-800 rounded-lg p-3 flex flex-col shadow-lg">
+                    <h2 class="section-header text-yellow-400 p-2 text-center">Rehab</h2>
+                    <div id="rehab-area" class="drop-zone flex-grow bg-gray-900/50 rounded-md p-2 min-h-[150px] border-2 border-dashed border-gray-600 transition-colors duration-300 space-y-2">
+                        <!-- Units in Rehab -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 2 & 3: Assignments -->
+            <div class="md:col-span-2 lg:col-span-3 bg-gray-800 rounded-lg p-3 shadow-lg">
+                <h2 class="section-header text-red-400 p-2 text-center mb-2">On-Scene Assignments</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    
+                    <div class="assignment-group">
+                        <h3>Fire Attack</h3>
+                        <div id="fire-attack-area" class="drop-zone"></div>
+                    </div>
+                    
+                    <div class="assignment-group">
+                        <h3>Search & Rescue</h3>
+                        <div id="search-rescue-area" class="drop-zone"></div>
+                    </div>
+                    
+                    <div class="assignment-group">
+                        <h3>Ventilation</h3>
+                        <div id="ventilation-area" class="drop-zone"></div>
+                    </div>
+                    
+                    <div class="assignment-group">
+                        <h3>RIT (Rapid Intervention)</h3>
+                        <div id="rit-area" class="drop-zone"></div>
+                    </div>
+                    
+                    <div class="assignment-group">
+                        <h3>Exterior</h3>
+                        <div id="exterior-area" class="drop-zone"></div>
+                    </div>
+                    
+                    <div class="assignment-group">
+                        <h3>Water Supply</h3>
+                        <div id="water-supply-area" class="drop-zone"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- Add Unit Modal -->
+    <div id="unit-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-xl font-bold">Select a Department</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div id="modal-content-area">
+                <!-- Department/Unit buttons will be injected here -->
+            </div>
+             <button id="back-to-departments-btn" class="hidden mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                &larr; Back to Departments
+            </button>
+        </div>
+    </div>
+
+
+    <!-- CSS for Dynamic Elements -->
+    <style>
+        .unit-tag {
+            background-color: #1F2937; /* gray-800 */
+            border: 1px solid #4B5563; /* gray-600 */
+            border-radius: 0.5rem;
+            padding: 0;
+            cursor: grab;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+        .unit-tag:active {
+            cursor: grabbing;
+        }
+        .unit-header {
+            padding: 0.5rem 0.75rem;
+            font-weight: 600;
+            color: white;
+            text-align: center;
+        }
+        .personnel-list {
+            list-style: none;
+            padding: 0.5rem 0.75rem;
+            margin: 0;
+            font-size: 0.875rem;
+        }
+        .personnel-list li {
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+        }
+        .unit-timer {
+            background-color: #374151; /* gray-700 */
+            font-family: 'monospace';
+            text-align: center;
+            font-size: 0.875rem;
+            padding: 0.25rem;
+        }
+        .assignment-group {
+            background-color: #374151; /* gray-700 */
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+        }
+        .assignment-group h3 {
+            font-weight: 600;
+            text-align: center;
+            padding-bottom: 0.5rem;
+            color: #d1d5db; /* gray-300 */
+        }
+        .assignment-group .drop-zone {
+            background-color: rgba(17, 24, 39, 0.5); /* gray-900/50 */
+            min-height: 120px;
+            border: 2px dashed #4B5563; /* gray-600 */
+            border-radius: 0.375rem;
+            padding: 0.5rem;
+            transition: all 0.3s;
+            space-y-2 flex flex-col gap-2;
+        }
+    </style>
+
+    <script type="module">
+        import { departmentUnits } from './config.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Timers
+            const incidentTimerEl = document.getElementById('incident-timer');
+            let incidentStartTime = Date.now();
+            let unitTimers = {}; // { unitId: startTime }
+
+            function updateTimers() {
+                // Update main incident timer
+                const elapsed = new Date(Date.now() - incidentStartTime);
+                const h = String(elapsed.getUTCHours()).padStart(2, '0');
+                const m = String(elapsed.getUTCMinutes()).padStart(2, '0');
+                const s = String(elapsed.getUTCSeconds()).padStart(2, '0');
+                incidentTimerEl.textContent = `${h}:${m}:${s}`;
+                
+                // Update all unit PAR timers
+                document.querySelectorAll('.unit-tag').forEach(unit => {
+                    const unitId = unit.id;
+                    const timerEl = unit.querySelector('.unit-timer');
+                    if (unitTimers[unitId]) {
+                        const unitElapsed = new Date(Date.now() - unitTimers[unitId]);
+                        const um = String(unitElapsed.getUTCMinutes()).padStart(2, '0');
+                        const us = String(unitElapsed.getUTCSeconds()).padStart(2, '0');
+                        timerEl.textContent = `PAR: ${um}:${us}`;
+                    }
+                });
+            }
+            setInterval(updateTimers, 1000);
+
+            // Drag and Drop Logic
+            let draggedItem = null;
+
+            function handleDragStart(e) {
+                draggedItem = this;
+                setTimeout(() => this.classList.add('dragging'), 0);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', this.id);
+            }
+
+            function handleDragEnd() {
+                this.classList.remove('dragging');
+                draggedItem = null;
+            }
+
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            }
+
+
+            function handleDragEnter(e) {
+                e.preventDefault();
+                this.classList.add('drag-over');
+            }
+
+            function handleDragLeave(e) {
+                this.classList.remove('drag-over');
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                this.classList.remove('drag-over');
+                if (draggedItem) {
+                    this.appendChild(draggedItem);
+                    
+                    // Update PAR timer when dropped into an assignment zone
+                    const unitId = draggedItem.id;
+                    const isAssignmentZone = this.parentElement.classList.contains('assignment-group');
+                    const isRehab = this.id === 'rehab-area';
+                    const isStaging = this.id === 'staging-area';
+                    
+                    if (isAssignmentZone) {
+                        // Start or restart timer if not already running for this unit
+                        if (!unitTimers[unitId]) {
+                            unitTimers[unitId] = Date.now();
+                        }
+                    } else if (isRehab || isStaging) {
+                        // Stop and reset timer if moved to rehab or staging
+                        delete unitTimers[unitId];
+                        const timerEl = draggedItem.querySelector('.unit-timer');
+                        timerEl.textContent = 'PAR: 00:00';
+                    }
+                }
+            }
+
+            function setupDragAndDrop() {
+                const draggables = document.querySelectorAll('.unit-tag');
+                const dropZones = document.querySelectorAll('.drop-zone');
+
+                draggables.forEach(draggable => {
+                    draggable.addEventListener('dragstart', handleDragStart);
+                    draggable.addEventListener('dragend', handleDragEnd);
+                });
+
+                dropZones.forEach(zone => {
+                    zone.addEventListener('dragover', handleDragOver);
+                    zone.addEventListener('dragenter', handleDragEnter);
+                    zone.addEventListener('dragleave', handleDragLeave);
+                    zone.addEventListener('drop', handleDrop);
+                });
+            }
+
+            // --- Add New Unit Logic ---
+            const addUnitBtn = document.getElementById('add-unit-btn');
+            const stagingArea = document.getElementById('staging-area');
+            const unitModal = document.getElementById('unit-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContentArea = document.getElementById('modal-content-area');
+            const backToDepartmentsBtn = document.getElementById('back-to-departments-btn');
+
+            // --- PREDEFINED UNITS ARE NOW LOADED FROM config.js ---
+            // To edit units, open the 'config.js' file.
+
+            function createNewUnit(unitType) {
+                const newUnit = document.createElement('div');
+                newUnit.className = 'unit-tag';
+                newUnit.id = `unit-${Date.now()}`;
+                newUnit.draggable = true;
+
+                const colors = ['bg-blue-600', 'bg-red-600', 'bg-green-600', 'bg-purple-600', 'bg-indigo-600', 'bg-pink-600'];
+                const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+                newUnit.innerHTML = `
+                    <div class="unit-header ${randomColor}" contenteditable="true">${unitType}</div>
+                    <ul class="personnel-list">
+                        <li contenteditable="true">Personnel 1</li>
+                        <li contenteditable="true">Personnel 2</li>
+                        <li contenteditable="true">Personnel 3</li>
+                    </ul>
+                    <div class="unit-timer">PAR: 00:00</div>
+                `;
+                stagingArea.appendChild(newUnit);
+                setupDragAndDrop(); // Re-initialize listeners for the new element
+            }
+
+            function showUnitsForDepartment(deptName) {
+                const department = departmentUnits[deptName];
+                modalTitle.textContent = `Select Unit from ${deptName}`;
+                modalContentArea.innerHTML = ''; // Clear departments
+                modalContentArea.className = 'grid grid-cols-2 sm:grid-cols-3 gap-3';
+                
+                // Add buttons for predefined units
+                department.units.forEach(unitName => {
+                    const button = document.createElement('button');
+                    button.textContent = unitName;
+                    button.className = `w-full ${department.color} ${department.hover} text-white font-bold py-2 px-3 rounded transition-colors text-sm`;
+                    button.addEventListener('click', () => {
+                        createNewUnit(unitName);
+                        unitModal.classList.add('hidden');
+                    });
+                    modalContentArea.appendChild(button);
+                });
+
+                // Add the "Custom" button
+                const customButton = document.createElement('button');
+                customButton.textContent = 'Custom...';
+                customButton.className = `w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded transition-colors text-sm`;
+                customButton.addEventListener('click', () => {
+                    const customUnitName = prompt('Enter custom unit name:');
+                    if (customUnitName && customUnitName.trim() !== '') {
+                        createNewUnit(customUnitName.trim());
+                        unitModal.classList.add('hidden');
+                    }
+                });
+                modalContentArea.appendChild(customButton);
+                
+                backToDepartmentsBtn.classList.remove('hidden');
+            }
+
+            function showDepartments() {
+                modalTitle.textContent = 'Select a Department';
+                modalContentArea.innerHTML = ''; // Clear units
+                modalContentArea.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+                
+                Object.keys(departmentUnits).forEach(deptName => {
+                    const department = departmentUnits[deptName];
+                    const button = document.createElement('button');
+                    button.textContent = deptName;
+                    button.className = `w-full ${department.color} ${department.hover} text-white font-bold py-3 px-4 rounded transition-colors`;
+                    button.addEventListener('click', () => showUnitsForDepartment(deptName));
+                    modalContentArea.appendChild(button);
+                });
+
+                backToDepartmentsBtn.classList.add('hidden');
+            }
+
+
+            addUnitBtn.addEventListener('click', () => {
+                showDepartments();
+                unitModal.classList.remove('hidden');
+            });
+
+            backToDepartmentsBtn.addEventListener('click', showDepartments);
+
+            // Close modal logic
+            closeModalBtn.addEventListener('click', () => {
+                unitModal.classList.add('hidden');
+            });
+
+            unitModal.addEventListener('click', (e) => {
+                if (e.target === unitModal) { // Allows closing by clicking the background overlay
+                    unitModal.classList.add('hidden');
+                }
+            });
+
+            // Initial setup
+            setupDragAndDrop();
+        });
+    </script>
+</body>
+</html>
+
