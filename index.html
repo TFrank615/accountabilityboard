@@ -12,7 +12,7 @@
             overscroll-behavior: none;
         }
         .unit-tag {
-            touch-action: none;
+            touch-action: none; /* Prevents browser from handling touch events like scrolling on this element */
         }
         .dragging {
             opacity: 0.5;
@@ -247,7 +247,9 @@
 
             // Drag and Drop Logic
             let draggedItem = null;
+            let lastTouchTarget = null;
 
+            // --- MOUSE EVENTS ---
             function handleDragStart(e) {
                 draggedItem = this;
                 setTimeout(() => this.classList.add('dragging'), 0);
@@ -257,6 +259,7 @@
 
             function handleDragEnd() {
                 this.classList.remove('dragging');
+                document.querySelectorAll('.drag-over').forEach(zone => zone.classList.remove('drag-over'));
                 draggedItem = null;
             }
 
@@ -265,57 +268,95 @@
                 e.dataTransfer.dropEffect = 'move';
             }
 
-
             function handleDragEnter(e) {
                 e.preventDefault();
                 this.classList.add('drag-over');
             }
 
-            function handleDragLeave(e) {
+            function handleDragLeave() {
                 this.classList.remove('drag-over');
             }
 
             function handleDrop(e) {
                 e.preventDefault();
-                this.classList.remove('drag-over');
                 if (draggedItem) {
-                    this.appendChild(draggedItem);
-                    
-                    // Update PAR timer when dropped into an assignment zone
-                    const unitId = draggedItem.id;
-                    const isAssignmentZone = this.parentElement.classList.contains('assignment-group');
-                    const isRehab = this.id === 'rehab-area';
-                    const isStaging = this.id === 'staging-area';
-                    
-                    if (isAssignmentZone) {
-                        // Start or restart timer if not already running for this unit
-                        if (!unitTimers[unitId]) {
-                            unitTimers[unitId] = Date.now();
-                        }
-                    } else if (isRehab || isStaging) {
-                        // Stop and reset timer if moved to rehab or staging
-                        delete unitTimers[unitId];
-                        const timerEl = draggedItem.querySelector('.unit-timer');
-                        timerEl.textContent = 'PAR: 00:00';
-                    }
+                    processDrop(draggedItem, this);
+                }
+            }
+            
+            // --- TOUCH EVENTS ---
+            function handleTouchStart(e) {
+                if (e.touches.length > 1) return;
+                draggedItem = this;
+                this.classList.add('dragging');
+                document.addEventListener('touchmove', handleTouchMove, { passive: false });
+                document.addEventListener('touchend', handleTouchEnd);
+            }
+
+            function handleTouchMove(e) {
+                e.preventDefault();
+                if (!draggedItem) return;
+                const touch = e.touches[0];
+                const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+                const dropZone = targetElement ? targetElement.closest('.drop-zone') : null;
+
+                if (lastTouchTarget !== dropZone) {
+                    if (lastTouchTarget) lastTouchTarget.classList.remove('drag-over');
+                    if (dropZone) dropZone.classList.add('drag-over');
+                    lastTouchTarget = dropZone;
                 }
             }
 
-            function setupDragAndDrop() {
-                const draggables = document.querySelectorAll('.unit-tag');
-                const dropZones = document.querySelectorAll('.drop-zone');
+            function handleTouchEnd() {
+                if (draggedItem && lastTouchTarget) {
+                    processDrop(draggedItem, lastTouchTarget);
+                }
+                if (draggedItem) draggedItem.classList.remove('dragging');
+                if (lastTouchTarget) lastTouchTarget.classList.remove('drag-over');
+                
+                draggedItem = null;
+                lastTouchTarget = null;
+                document.removeEventListener('touchmove', handleTouchMove);
+                document.removeEventListener('touchend', handleTouchEnd);
+            }
 
+            // --- SHARED LOGIC for drop actions ---
+            function processDrop(item, zone) {
+                zone.appendChild(item);
+                const unitId = item.id;
+                const isAssignmentZone = zone.parentElement.classList.contains('assignment-group');
+                const isRehab = zone.id === 'rehab-area';
+                const isStaging = zone.id === 'staging-area';
+                
+                if (isAssignmentZone) {
+                    if (!unitTimers[unitId]) unitTimers[unitId] = Date.now();
+                } else if (isRehab || isStaging) {
+                    delete unitTimers[unitId];
+                    item.querySelector('.unit-timer').textContent = 'PAR: 00:00';
+                }
+            }
+
+            function setupEventListeners() {
+                const draggables = document.querySelectorAll('.unit-tag');
                 draggables.forEach(draggable => {
-                    draggable.addEventListener('dragstart', handleDragStart);
-                    draggable.addEventListener('dragend', handleDragEnd);
+                    addListenersToUnit(draggable);
                 });
 
+                const dropZones = document.querySelectorAll('.drop-zone');
                 dropZones.forEach(zone => {
                     zone.addEventListener('dragover', handleDragOver);
                     zone.addEventListener('dragenter', handleDragEnter);
                     zone.addEventListener('dragleave', handleDragLeave);
                     zone.addEventListener('drop', handleDrop);
                 });
+            }
+            
+            function addListenersToUnit(unit) {
+                // Mouse events
+                unit.addEventListener('dragstart', handleDragStart);
+                unit.addEventListener('dragend', handleDragEnd);
+                // Touch events
+                unit.addEventListener('touchstart', handleTouchStart);
             }
 
             // --- Add New Unit Logic ---
@@ -326,9 +367,6 @@
             const modalTitle = document.getElementById('modal-title');
             const modalContentArea = document.getElementById('modal-content-area');
             const backToDepartmentsBtn = document.getElementById('back-to-departments-btn');
-
-            // --- PREDEFINED UNITS ARE NOW LOADED FROM config.js ---
-            // To edit units, open the 'config.js' file.
 
             function createNewUnit(unitType) {
                 const newUnit = document.createElement('div');
@@ -348,17 +386,16 @@
                     </ul>
                     <div class="unit-timer">PAR: 00:00</div>
                 `;
+                addListenersToUnit(newUnit); // Add listeners to the new element
                 stagingArea.appendChild(newUnit);
-                setupDragAndDrop(); // Re-initialize listeners for the new element
             }
 
             function showUnitsForDepartment(deptName) {
                 const department = departmentUnits[deptName];
                 modalTitle.textContent = `Select Unit from ${deptName}`;
-                modalContentArea.innerHTML = ''; // Clear departments
+                modalContentArea.innerHTML = '';
                 modalContentArea.className = 'grid grid-cols-2 sm:grid-cols-3 gap-3';
                 
-                // Add buttons for predefined units
                 department.units.forEach(unitName => {
                     const button = document.createElement('button');
                     button.textContent = unitName;
@@ -370,7 +407,6 @@
                     modalContentArea.appendChild(button);
                 });
 
-                // Add the "Custom" button
                 const customButton = document.createElement('button');
                 customButton.textContent = 'Custom...';
                 customButton.className = `w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded transition-colors text-sm`;
@@ -388,7 +424,7 @@
 
             function showDepartments() {
                 modalTitle.textContent = 'Select a Department';
-                modalContentArea.innerHTML = ''; // Clear units
+                modalContentArea.innerHTML = '';
                 modalContentArea.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
                 
                 Object.keys(departmentUnits).forEach(deptName => {
@@ -403,7 +439,6 @@
                 backToDepartmentsBtn.classList.add('hidden');
             }
 
-
             addUnitBtn.addEventListener('click', () => {
                 showDepartments();
                 unitModal.classList.remove('hidden');
@@ -411,21 +446,19 @@
 
             backToDepartmentsBtn.addEventListener('click', showDepartments);
 
-            // Close modal logic
             closeModalBtn.addEventListener('click', () => {
                 unitModal.classList.add('hidden');
             });
 
             unitModal.addEventListener('click', (e) => {
-                if (e.target === unitModal) { // Allows closing by clicking the background overlay
+                if (e.target === unitModal) {
                     unitModal.classList.add('hidden');
                 }
             });
 
             // Initial setup
-            setupDragAndDrop();
+            setupEventListeners();
         });
     </script>
 </body>
 </html>
-
